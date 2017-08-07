@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
 const _ = require('lodash');
+const morgan = require('morgan');
 
 const {mongoose} = require('./db/mongoose');
 const {Transaction} = require('./models/transaction');
@@ -16,6 +17,7 @@ const port = process.env.PORT;
 
 // middleware request json parser
 app.use(bodyParser.json());
+app.use(morgan('dev'));
 
 app.listen(port, () => {
 	console.log(`Magic is on port ${port}...`);
@@ -87,7 +89,7 @@ app.post('/users/register', (req, res) => {
 		return newUser.generateAuthToken();
 	}).then((token) => {
 		res.header('x-auth', token).send(newUser);
-		// console.log("type :", typeof(token));
+		
 		// create accounts for the new user
 		new Account({name: "cash", _owner: newUser._id}).save();
 		new Account({name: "bank", _owner: newUser._id}).save();
@@ -111,7 +113,8 @@ app.post('/users/login', (req, res) => {
 
 // get user id and email
 app.get('/users/me', authenticate, (req, res) => {
-	res.send(req.user.email);
+	res.send("hello my client");
+	console.log("Hello my client");
 });
 
 // get money accounts
@@ -149,7 +152,5 @@ app.patch('/accounts/update/:name', authenticate, (req, res) => {
 app.get('/hello', (req, res) => {
 	res.send('hello from Moneyger API');
 });
-
-
 
 module.exports = {app};

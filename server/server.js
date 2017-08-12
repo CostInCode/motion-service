@@ -28,7 +28,7 @@ app.get('/transactions', authenticate, (req, res) => {
 	Transaction.find({
 		_creator: req.user._id
 	}).then((transactions) => {
-		res.send({transactions});
+		res.send(transactions);
 	}, (e) => {
 		res.status(400).send(e);
 	});
@@ -36,16 +36,35 @@ app.get('/transactions', authenticate, (req, res) => {
 
 // get recent transactions
 app.get('/transactions/last', authenticate, (req, res) => {
-	Transaction.find().sort({_id: -1}).limit(5).select('type category date amount')
-		.then((transactions) => res.send({transactions}), 
+	Transaction.find().sort({_id: -1}).limit(5).select('type category subcategory date amount')
+		.then((transactions) => res.send(transactions), 
 			(e) => res.status(400).send(e));
 });
 
 // get graph stats transactions
 app.get('/transactions/graph', authenticate, (req, res) => {
 	Transaction.find().select('type category amount')
-		.then((transactions) => res.send({transactions}), 
+		.then((transactions) => res.send(transactions), 
 			(e) => res.status(400).send(e));
+});
+
+app.get('/transactions/graph/:type', authenticate, (req, res) => {
+	Transaction.find({type: req.params.type}).select('category amount')
+		.then((transactions) => {
+			let categories = [];
+			transactions.forEach(
+				(transaction) => {
+					let duplicate = categories.find((doc) => doc.category === transaction.category);
+					if (duplicate) duplicate.amount += transaction.amount;
+					else categories.push({
+					category: transaction.category,
+					amount: transaction.amount
+				});
+				
+			});
+			res.send(categories);
+		}, 
+		(e) => res.status(400).send(e));
 });
 
 app.get('/transactions/:id', authenticate, (req, res) => {
@@ -91,9 +110,9 @@ app.post('/users/register', (req, res) => {
 		res.header('x-auth', token).send(newUser);
 		
 		// create accounts for the new user
-		new Account({name: "cash", _owner: newUser._id}).save();
-		new Account({name: "bank", _owner: newUser._id}).save();
-		new Account({name: "card", _owner: newUser._id}).save();
+		new Account({name: "Cash", _owner: newUser._id}).save();
+		new Account({name: "Bank", _owner: newUser._id}).save();
+		new Account({name: "Card", _owner: newUser._id}).save();
 	}).catch((e) => {
 		res.status(400).send(e);
 	});
@@ -111,29 +130,35 @@ app.post('/users/login', (req, res) => {
 	});
 });
 
-// get user id and email
+// letme in
 app.get('/users/me', authenticate, (req, res) => {
 	res.send("hello my client");
-	console.log("Hello my client");
 });
 
-// get money accounts
+// get accounts name and balance
 app.get('/accounts', authenticate, (req, res) => {
 	Account.find({
 		_owner: req.user._id
 	}).then((accounts) => {
-		res.send({accounts});
+		let response = [];
+		accounts.forEach((account) => {
+			response.push({
+				"name": "Type: " + account.name,
+				"balance": "Balance: " + account.balance
+			});
+		});
+		res.send(response);
 	}, (e) => {
 		res.status(400).send(e);
 	});
 });
 
 // get account balance
-app.get('/accounts/balance/:name', authenticate, (req, res) => {
+app.get('/accounts/:name/balance', authenticate, (req, res) => {
 	Account.findOne({
 		name: req.params.name,
 		_owner: req.user._id
-	}).then((result) => res.send(JSON.stringify(result)),
+	}).then((result) => res.send(JSON.stringify(result.balance)),
 		(e) => {
 		res.status(400).send(e);
 	});
@@ -147,10 +172,6 @@ app.patch('/accounts/update/:name', authenticate, (req, res) => {
 	}, {$set: {balance: req.body.balance}}, {new : true}).then((doc) => {
 		!doc? res.status(400).send("bad request") : res.send(doc);
 	}).catch((e) => res.status(400).send(e));
-});
-
-app.get('/hello', (req, res) => {
-	res.send('hello from Moneyger API');
 });
 
 module.exports = {app};

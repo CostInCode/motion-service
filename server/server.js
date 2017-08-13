@@ -54,13 +54,12 @@ app.get('/transactions/graph/:type', authenticate, (req, res) => {
 			let categories = [];
 			transactions.forEach(
 				(transaction) => {
-					let duplicate = categories.find((doc) => doc.category === transaction.category);
+					let duplicate = categories.find((doc) => doc.name === transaction.category);
 					if (duplicate) duplicate.amount += transaction.amount;
 					else categories.push({
-					category: transaction.category,
+					name: transaction.category,
 					amount: transaction.amount
 				});
-				
 			});
 			res.send(categories);
 		}, 
@@ -93,8 +92,14 @@ app.post('/transactions', authenticate, (req, res) => {
 		account: req.body.account,
 		_creator: req.user._id
 	}).save().then((doc) => {
-		res.send(doc);
+		// res.send(doc);
 		// UPDATE ACCOUNT WITH TRANS.AMOUNT
+		Account.findOneAndUpdate({
+		name: doc.account,
+		_owner: doc._creator
+	}, {$inc: {balance: doc.amount}}, {new : true}).then((doc) => {
+		!doc? res.status(400).send("bad request") : res.send(doc);
+	}).catch((e) => res.status(400).send(e));
 	}, (e) => {
 		res.status(400).send(e);
 	});

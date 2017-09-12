@@ -41,13 +41,14 @@ app.get('/transactions/last', authenticate, (req, res) => {
 			(e) => res.status(400).send(e));
 });
 
-// get graph stats transactions
+// get categories for list under graphs
 app.get('/transactions/graph', authenticate, (req, res) => {
 	Transaction.find().select('type category amount')
 		.then((transactions) => res.send(transactions), 
 			(e) => res.status(400).send(e));
 });
 
+// get graph stats
 app.get('/transactions/graph/:type', authenticate, (req, res) => {
 	Transaction.find({type: req.params.type}).select('category amount')
 		.then((transactions) => {
@@ -92,7 +93,6 @@ app.post('/transactions', authenticate, (req, res) => {
 		account: req.body.account,
 		_creator: req.user._id
 	}).save().then((doc) => {
-		// res.send(doc);
 		// UPDATE ACCOUNT WITH TRANS.AMOUNT
 		Account.findOneAndUpdate({
 		name: doc.account,

@@ -41,7 +41,7 @@ app.get('/addMotion', (req, res) => {
 	const minutes = date.getUTCMinutes();
 	new Motion({
 		message: req.query.message,
-		year, month, day, hour, minutes
+		datee: {year, month, day}, hour, minutes
 	}).save().then((motion) => {
 		motion? res.send(motion) : res.status(400).send("bad request");
 	}).catch((e) => res.status(400).send(e));
@@ -71,6 +71,7 @@ app.get('/motions/:year/:month/:day', (req, res) => {
 	}).then(() => console.log('ok')).catch((e) => res.sendStatus(400));
 });
 
+// given start date and end date, get nr of motions per day
 app.get('/dates', (req, res) => {
 	const y1 = req.query.fromYear,
 	m1 = req.query.fromMonth,
@@ -80,20 +81,29 @@ app.get('/dates', (req, res) => {
 	d2 = req.query.toDay;
 	
 	let dates = getDates(new Date(y1, m1, d1), new Date(y2, m2, d2));
-	let motionsPerDay = [];
-	dates.forEach(date => Motion.find({
-		year: date.getFullYear(),
-		month: date.getMonth()+1,
-		day: date.getDate()
-	}).exec().then((docs) => {
-		docs.forEach(doc => addOrUpdateHours(motionsPerDay, doc))
-		//res.send(`${JSON.stringify(motionsPerDay)}`)
-	//	console.log(`BOH: ${JSON.stringify(motionsPerDay)}`);
-	}).catch((e) => console.log(e))); // end foreach date
-
-	console.log(`BOH: ${JSON.stringify(motionsPerDay)}`)
+	let arrayDates = [];
+	dates.forEach(date => arrayDates.push({
+			year: date.getFullYear(),
+			month: date.getMonth()+1,
+			day: date.getDate()
+	}));
+	Motion.find({
+		'datee': {$in: arrayDates}
+	}).select('datee').exec().then((docs) => {
+		let motionsPerDay = [];
+		docs.forEach(doc => addOrUpdateDay(motionsPerDay, doc))
+		res.send(`${JSON.stringify(motionsPerDay)}`);
+	}).catch((e) => console.log(e)); 	
 });
 
+const addOrUpdateDay = (array, item) => {
+	const i = array.findIndex(_item => _item.day === item.datee.day);
+	if(i > -1) {
+		let c = array[i].count + 1;
+		array[i] = {day: item.datee.day, count: c};
+	} 
+	else array.push({day: item.datee.day, count: 1});
+}
 
 const addOrUpdateHours = (array, item) => {
 	const i = array.findIndex(_item => _item.h === item.hour);
@@ -120,5 +130,5 @@ const getDates = (startDate, stopDate) => {
     return dateArray;
 }
 	
-
 module.exports = {app};
+

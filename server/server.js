@@ -71,6 +71,30 @@ app.get('/motions/:year/:month/:day', (req, res) => {
 	}).then(() => console.log('ok')).catch((e) => res.sendStatus(400));
 });
 
+app.get('/dates', (req, res) => {
+	const y1 = req.query.fromYear,
+	m1 = req.query.fromMonth,
+	d1 = req.query.fromDay,
+	y2 = req.query.toYear,
+	m2 = req.query.toMonth,
+	d2 = req.query.toDay;
+	
+	let dates = getDates(new Date(y1, m1, d1), new Date(y2, m2, d2));
+	let motionsPerDay = [];
+	dates.forEach(date => Motion.find({
+		year: date.getFullYear(),
+		month: date.getMonth()+1,
+		day: date.getDate()
+	}).exec().then((docs) => {
+		docs.forEach(doc => addOrUpdateHours(motionsPerDay, doc))
+		//res.send(`${JSON.stringify(motionsPerDay)}`)
+	//	console.log(`BOH: ${JSON.stringify(motionsPerDay)}`);
+	}).catch((e) => console.log(e))); // end foreach date
+
+	console.log(`BOH: ${JSON.stringify(motionsPerDay)}`)
+});
+
+
 const addOrUpdateHours = (array, item) => {
 	const i = array.findIndex(_item => _item.h === item.hour);
 	if(i > -1) {
@@ -78,6 +102,22 @@ const addOrUpdateHours = (array, item) => {
 		array[i] = {h: item.hour, count: c};
 	} 
 	else array.push({h: item.hour, count: 1});
+}
+
+Date.prototype.addDays = function(days) {
+    var date = new Date(this.valueOf());
+    date.setDate(date.getDate() + days);
+    return date;
+}
+
+const getDates = (startDate, stopDate) => {
+    let dateArray = [];
+    let currentDate = startDate;
+    while (currentDate <= stopDate) {
+        dateArray.push(new Date (currentDate));
+        currentDate = currentDate.addDays(1);
+    }
+    return dateArray;
 }
 	
 

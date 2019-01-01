@@ -4,7 +4,7 @@ const Motion = new mongoose.model('Motion', {
 	message: {
 		type: String
 	},
-	datee: {
+	date: {
 		year: {
 			type: Number
 		},

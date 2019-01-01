@@ -2,10 +2,7 @@ require('./config/config');
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const {ObjectID} = require('mongodb');
-const _ = require('lodash');
 const morgan = require('morgan');
-
 const {mongoose} = require('./db/mongoose');
 const {Motion} = require('./models/motion');
 
@@ -32,16 +29,16 @@ app.get('/motions', (req, res) => {
 
 // add new motion // it is a get request because camera cant send post req
 app.get('/addMotion', (req, res) => {
-	const timestamp = Date.now();
-	const date = new Date(timestamp);
-	const year = date.getFullYear();
-	const month = date.getMonth() + 1;
-	const day = date.getDate();
-	const hour = date.getUTCHours();
-	const minutes = date.getUTCMinutes();
+	const now = Date.now();
+	const datenow = new Date(now);
+	const year = datenow.getFullYear();
+	const month = datenow.getMonth() + 1;
+	const day = datenow.getDate();
+	const hour = datenow.getUTCHours();
+	const minutes = datenow.getUTCMinutes();
 	new Motion({
 		message: req.query.message,
-		datee: {year, month, day}, hour, minutes
+		date: {year, month, day}, hour, minutes
 	}).save().then((motion) => {
 		motion? res.send(motion) : res.status(400).send("bad request");
 	}).catch((e) => res.status(400).send(e));
@@ -58,9 +55,11 @@ app.get('/motions/:hour', (req, res) => {
 // given a day, get motions per hour 
 app.get('/motions/:year/:month/:day', (req, res) => {
 	Motion.find({
-		year: req.params.year,
-		month: req.params.month,
-		day: req.params.day
+		date: {
+			year: req.params.year,
+			month: req.params.month,
+			day: req.params.day
+		}
 	}, 'hour', (err, docs) => {
 		if(err) return;
 		let hours = [];
@@ -88,8 +87,8 @@ app.get('/dates', (req, res) => {
 			day: date.getDate()
 	}));
 	Motion.find({
-		'datee': {$in: arrayDates}
-	}).select('datee').exec().then((docs) => {
+		'date': {$in: arrayDates}
+	}).select('date').exec().then((docs) => {
 		let motionsPerDay = [];
 		docs.forEach(doc => addOrUpdateDay(motionsPerDay, doc))
 		res.send(`${JSON.stringify(motionsPerDay)}`);
@@ -97,12 +96,12 @@ app.get('/dates', (req, res) => {
 });
 
 const addOrUpdateDay = (array, item) => {
-	const i = array.findIndex(_item => _item.day === item.datee.day);
+	const i = array.findIndex(_item => _item.day === item.date.day);
 	if(i > -1) {
 		let c = array[i].count + 1;
-		array[i] = {day: item.datee.day, count: c};
+		array[i] = {day: item.date.day, count: c};
 	} 
-	else array.push({day: item.datee.day, count: 1});
+	else array.push({day: item.date.day, count: 1});
 }
 
 const addOrUpdateHours = (array, item) => {
@@ -115,7 +114,7 @@ const addOrUpdateHours = (array, item) => {
 }
 
 Date.prototype.addDays = function(days) {
-    var date = new Date(this.valueOf());
+    let date = new Date(this.valueOf());
     date.setDate(date.getDate() + days);
     return date;
 }
@@ -124,7 +123,7 @@ const getDates = (startDate, stopDate) => {
     let dateArray = [];
     let currentDate = startDate;
     while (currentDate <= stopDate) {
-        dateArray.push(new Date (currentDate));
+        dateArray.push(new Date(currentDate));
         currentDate = currentDate.addDays(1);
     }
     return dateArray;

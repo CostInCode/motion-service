@@ -9,7 +9,11 @@ const {Motion} = require('./models/motion');
 const app = express();
 const port = process.env.PORT;
 
-// middleware request json parser
+
+app.use((req, res, next) => {
+	res.header('Access-Control-Allow-Origin', '*');
+	next();
+});
 app.use(bodyParser.json());
 app.use(morgan('dev'));
 

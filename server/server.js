@@ -57,21 +57,22 @@ app.get('/motions/:hour', (req, res) => {
 });
 
 // given a day, get motions per hour 
-app.get('/motions/:year/:month/:day', (req, res) => {
+app.get('/motionsDay/:year/:month/:day', (req, res) => {
+	const year = parseInt(req.params.year);
+	const month = parseInt(req.params.month);
+	const day = parseInt(req.params.day);
 	Motion.find({
 		date: {
-			year: req.params.year,
-			month: req.params.month,
-			day: req.params.day
+			year,
+			month,
+			day
 		}
-	}, 'hour', (err, docs) => {
-		if(err) return;
-		let hours = [];
-		docs.forEach(doc => {
-			addOrUpdateHours(hours, doc);
-		});
-		res.send(`hours: ${JSON.stringify(hours)}`);
-	}).then(() => console.log('ok')).catch((e) => res.sendStatus(400));
+	}).select('hour').exec().then((docs) => {
+		let motionsPerHour = [];
+		console.log(JSON.stringify(docs));
+		docs.forEach(doc => addOrUpdateHours(motionsPerHour, doc))
+		res.send(`${JSON.stringify(motionsPerHour)}`);
+	}).catch((e) => console.log(e));	
 });
 
 // given start date and end date, get nr of motions per day

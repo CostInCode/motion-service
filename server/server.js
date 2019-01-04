@@ -9,7 +9,6 @@ const {Motion} = require('./models/motion');
 const app = express();
 const port = process.env.PORT;
 
-
 app.use((req, res, next) => {
 	res.header('Access-Control-Allow-Origin', '*');
 	next();
@@ -18,7 +17,7 @@ app.use(bodyParser.json());
 app.use(morgan('dev'));
 
 app.listen(port, () => {
-	console.log(`Magic is on port ${port}...`);
+	console.log(`Server listening on port ${port}...`);
 });
 
 // get all user motions
@@ -29,7 +28,6 @@ app.get('/motions', (req, res) => {
 		res.status(400).send(e);
 	});
 });
-
 
 // add new motion // it is a get request because camera cant send post req
 app.get('/addMotion', (req, res) => {
@@ -57,7 +55,7 @@ app.get('/motions/:hour', (req, res) => {
 });
 
 // given a day, get motions per hour 
-app.get('/motionsDay/:year/:month/:day', (req, res) => {
+app.get('/motions/:year/:month/:day', (req, res) => {
 	const year = parseInt(req.params.year);
 	const month = parseInt(req.params.month);
 	const day = parseInt(req.params.day);
@@ -69,10 +67,28 @@ app.get('/motionsDay/:year/:month/:day', (req, res) => {
 		}
 	}).select('hour').exec().then((docs) => {
 		let motionsPerHour = [];
-		console.log(JSON.stringify(docs));
 		docs.forEach(doc => addOrUpdateHours(motionsPerHour, doc))
 		res.send(`${JSON.stringify(motionsPerHour)}`);
 	}).catch((e) => console.log(e));	
+});
+
+// given day&hour, get motions per minute
+app.get('/motions/:year/:month/:day/:hour', (req, res) => { 
+	const year = parseInt(req.params.year);
+	const month = parseInt(req.params.month);
+	const day = parseInt(req.params.day);
+	Motion.find({
+		date: {
+			year,
+			month,
+			day
+		},
+		hour: req.params.hour
+	}).select('minutes').exec().then((docs) => {
+		let motions = [];
+		docs.forEach(doc => addOrUpdateMinute(motions, doc))
+		res.send(`${JSON.stringify(motions)}`);
+	}).catch((e) => console.log(e));
 });
 
 // given start date and end date, get nr of motions per day
@@ -117,6 +133,17 @@ const addOrUpdateHours = (array, item) => {
 	} 
 	else array.push({h: item.hour, count: 1});
 }
+
+const addOrUpdateMinute = (array, item) => {
+	debugger;
+	const i = array.findIndex(_item => _item.min === item.minutes);
+	if(i > -1) {
+		let c = array[i].count + 1;
+		array[i] = {min: item.minutes, count: c};
+	} 
+	else array.push({min: item.minutes, count: 1});
+}
+
 
 Date.prototype.addDays = function(days) {
     let date = new Date(this.valueOf());

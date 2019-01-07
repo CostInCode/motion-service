@@ -77,13 +77,14 @@ app.get('/motions/:year/:month/:day/:hour', (req, res) => {
 	const year = parseInt(req.params.year);
 	const month = parseInt(req.params.month);
 	const day = parseInt(req.params.day);
+	const hour = parseInt(req.params.hour);
 	Motion.find({
 		date: {
 			year,
 			month,
 			day
 		},
-		hour: req.params.hour
+		hour
 	}).select('minutes').exec().then((docs) => {
 		let motions = [];
 		docs.forEach(doc => addOrUpdateMinute(motions, doc))
